@@ -319,6 +319,10 @@ class CallQuantAdapter:
             ["license_badge", "insurance_badge", "review_stars"]
         )
         
+        # Generate context_id if not present
+        if "context_id" not in context_data:
+            context_data["context_id"] = f"ctx_{context_data.get('campaign_cell_id', 'unknown')}"
+        
         return BCC(**context_data)
 
 

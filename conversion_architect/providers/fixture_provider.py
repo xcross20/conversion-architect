@@ -54,10 +54,10 @@ class FixtureProvider(DesignPatternProvider):
             patterns = [p for p in patterns if p.page_type == query.page_type]
         if query.section_type:
             patterns = [p for p in patterns if p.section_type == query.section_type]
-        if query.perceptions:
+        if query.desired_perceptions:
             patterns = [
                 p for p in patterns
-                if any(perc.value in p.perceptions for perc in query.perceptions if hasattr(perc, 'value'))
+                if any(perc in p.perceptions for perc in query.desired_perceptions)
             ]
         
         return patterns[:query.limit]

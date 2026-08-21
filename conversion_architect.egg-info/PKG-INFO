@@ -1,0 +1,92 @@
+Metadata-Version: 2.4
+Name: conversion-architect
+Version: 0.1.0
+Summary: Landing page design system and genome compiler
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pyyaml>=6.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+
+# Conversion Architect
+
+**Version**: 0.1.0  
+**Authority**: GREEN (read-only advisory; no production mutations in WO-CA-0001)
+
+Landing page design system and genome compiler. Transforms validated offers, claims, and economic outcomes into high-converting landing page genomes.
+
+## Architecture
+
+```
+conversion-architect/
+├── SKILL.md              # Skill definition
+├── docs/                 # Documentation
+├── schemas/             # Canonical domain models
+├── agents/              # WD-01 to WD-06 designer roles
+├── providers/           # Design pattern & Framer providers
+├── design-system/       # Family signatures
+├── skins/               # Vertical skin definitions
+├── adapters/            # CallQuant adapter
+├── genome_compiler.py   # Genome compilation
+├── qa_system.py         # QA audit system
+└── tests/               # Tests
+```
+
+## Canonical Domain
+
+| Entity | Description |
+|--------|-------------|
+| `DesignFamily` | Collection of family signatures |
+| `FamilySignature` | Grammar rules |
+| `VerticalSkin` | Visual tokens per vertical |
+| `LanderGenome` | Complete page specification |
+| `QAAudit` | Quality assurance results |
+
+## Agent Roles
+
+| Role | Mission |
+|------|---------|
+| WD-01 | Visual Identity |
+| WD-02 | Information Architecture |
+| WD-03 | Conversion Layout |
+| WD-04 | Proof Architecture |
+| WD-05 | Mobile Experience |
+| WD-06 | Motion Design |
+
+## Providers
+
+- **DesignPatternProvider**: Abstract for design patterns (MotionSites MCP)
+- **FixtureProvider**: Fallback patterns for CI
+- **FramerProvider**: Framer API integration
+
+## Usage
+
+```python
+from conversion_architect.schemas import BusinessConversionContext
+from conversion_architect.adapters import create_callquant_adapter
+from conversion_architect.genome_compiler import compile_genome
+from conversion_architect.qa_system import run_qa
+
+# Build context from CallQuant
+adapter = create_callquant_adapter()
+context = adapter.build_context(
+    campaign_cell=cell_data,
+    intent_cluster=intent_data,
+    offer_variant=offer_data,
+    claim_manifest=claims_data
+)
+
+# Compile genome
+genome = await compile_genome(context, family)
+
+# QA audit
+audit = await run_qa(genome)
+if audit.can_proceed():
+    # Proceed to preview
+```
+
+## Work Orders
+
+- **WO-CA-0001**: Initial implementation (CA-M0 to CA-M4)
