@@ -1,0 +1,15 @@
+{
+  "id": "conversion-architect-plugin",
+  "name": "Conversion Architect",
+  "modes": [
+    "canvas",
+    "development"
+  ],
+  "icon": "/icon.svg",
+  "permissions": [
+    "read",
+    "write",
+    "network"
+  ],
+  "entrypoint": "index.html"
+}
