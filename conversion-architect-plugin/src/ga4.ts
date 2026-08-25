@@ -195,7 +195,8 @@ const CA_API_URL =
     (window as any).CA_API_URL) ||
   // @ts-ignore - Vite injects import.meta.env
   (import.meta.env?.VITE_CA_API_URL as string) ||
-  "http://localhost:8000"
+  // Default to deployed Railway URL
+  "https://ca-api-production-7266.up.railway.app"
 
 export async function fetchGA4Data(
   propertyId?: string,
