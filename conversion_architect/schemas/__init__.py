@@ -31,6 +31,22 @@ from conversion_architect.schemas.design_experiment import DesignExperiment, Exp
 # Business context
 from conversion_architect.schemas.business_context import BusinessConversionContext, ConversionGoal, UrgencyLevel
 
+# GA4 Analytics
+from conversion_architect.schemas.ga4_analytics import (
+    GA4AnalyticsData,
+    GA4ReportQuery,
+    GA4ConversionInsights,
+    GA4InsightRecommendation,
+    KeywordPerformance,
+    GeographicPerformance,
+    PagePerformance,
+    DevicePerformance,
+    AudienceInsight,
+    FunnelAnalysis,
+    TrafficSource,
+    ConversionStatus,
+)
+
 __all__ = [
     # Design family
     "DesignFamily",
@@ -74,4 +90,17 @@ __all__ = [
     "BusinessConversionContext",
     "ConversionGoal",
     "UrgencyLevel",
+    # GA4 Analytics
+    "GA4AnalyticsData",
+    "GA4ReportQuery",
+    "GA4ConversionInsights",
+    "GA4InsightRecommendation",
+    "KeywordPerformance",
+    "GeographicPerformance",
+    "PagePerformance",
+    "DevicePerformance",
+    "AudienceInsight",
+    "FunnelAnalysis",
+    "TrafficSource",
+    "ConversionStatus",
 ]

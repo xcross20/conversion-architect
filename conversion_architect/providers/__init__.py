@@ -18,6 +18,11 @@ from conversion_architect.providers.framer import (
     PromotionDeniedError,
     create_framer_provider,
 )
+from conversion_architect.providers.ga4_mcp_client import (
+    GA4MCPClient,
+    GA4MCPClientError,
+    create_ga4_mcp_client,
+)
 
 __all__ = [
     # Base classes
@@ -37,4 +42,8 @@ __all__ = [
     "FixtureProvider",
     "create_fixture_provider",
     "create_framer_provider",
+    # GA4 MCP
+    "GA4MCPClient",
+    "GA4MCPClientError",
+    "create_ga4_mcp_client",
 ]

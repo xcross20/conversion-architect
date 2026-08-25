@@ -114,6 +114,60 @@ class BusinessConversionContext(BaseModel):
         description="Genome IDs by variant"
     )
     
+    # GA4 Analytics enrichment
+    ga4_property_id: str | None = Field(
+        None,
+        description="GA4 property ID for analytics"
+    )
+    ga4_report_id: str | None = Field(
+        None,
+        description="Latest GA4 report ID"
+    )
+    top_converting_keywords: list[str] = Field(
+        default_factory=list,
+        description="Highest CVR keywords from GA4"
+    )
+    best_performing_state: str | None = Field(
+        None,
+        description="State with highest CVR from GA4"
+    )
+    best_performing_page: str | None = Field(
+        None,
+        description="Page path with highest CVR"
+    )
+    mobile_friendly_score: float = Field(
+        default=1.0,
+        description="Mobile usability score from GA4"
+    )
+    conversion_trend: str = Field(
+        default="stable",
+        description="Conversion trend: improving, declining, stable"
+    )
+    conversion_trend_pct: float = Field(
+        default=0.0,
+        description="Period-over-period change percentage"
+    )
+    
+    # GA4-derived design targets
+    target_cvr: float | None = Field(
+        None,
+        description="Target CVR from GA4 insights"
+    )
+    target_bounce_rate: float | None = Field(
+        None,
+        description="Target bounce rate from GA4 insights"
+    )
+    target_cta_click_rate: float | None = Field(
+        None,
+        description="Target CTA click rate"
+    )
+    
+    # Audience insights
+    dominant_age_bracket: str | None = Field(
+        None,
+        description="Primary audience age bracket from GA4"
+    )
+    
     # Metadata
     created_at: datetime = Field(default_factory=datetime.utcnow)
     meta_data: dict[str, Any] = Field(default_factory=dict)
@@ -150,6 +204,20 @@ class BusinessConversionContext(BaseModel):
                     "review_stars",
                     "guarantee_badge",
                     "years_in_business"
-                ]
+                ],
+                "ga4_property_id": "properties/123456789",
+                "ga4_report_id": "ga4_rpt_2024_01_15",
+                "top_converting_keywords": [
+                    "emergency hvac repair",
+                    "24 hour plumber"
+                ],
+                "best_performing_state": "TX",
+                "best_performing_page": "/emergency-services",
+                "mobile_friendly_score": 0.85,
+                "conversion_trend": "improving",
+                "conversion_trend_pct": 12.5,
+                "target_cvr": 0.045,
+                "target_bounce_rate": 0.35,
+                "dominant_age_bracket": "35-44"
             }
         }

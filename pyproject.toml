@@ -6,14 +6,24 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
     "pyyaml>=6.0",
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.23.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "httpx>=0.24.0",
 ]
+mcp = [
+    "mcp>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/xcross20/conversion-architect"
 
 [build-system]
 requires = ["setuptools>=61.0"]
@@ -25,3 +35,32 @@ include = ["conversion_architect*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+
+# GA4 MCP Integration Configuration
+#
+# 1. Install the GA4 MCP server (one-time):
+#      pipx install analytics-mcp
+#
+# 2. Configure Google Cloud credentials:
+#      Enable APIs in your project:
+#        - Google Analytics Admin API
+#        - Google Analytics Data API
+#
+#      Set up Application Default Credentials:
+#        gcloud auth application-default login \
+#          --scopes https://www.googleapis.com/auth/analytics.readonly
+#
+# 3. Set environment variables:
+#      GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+#      GOOGLE_PROJECT_ID=your-gcp-project-id
+#      GA4_PROPERTY_ID=properties/123456789
+#
+# 4. Use the MCP client in code:
+#      from conversion_architect.providers import create_ga4_mcp_client
+#      client = create_ga4_mcp_client()
+#      await client.connect()
+#      adapter = GA4Adapter(mcp_client=client, property_id="properties/123")
+#      data = await adapter.fetch_analytics()
+#
+# The GA4Adapter will automatically use the MCP when available,
+# otherwise falling back to mock data for development.

@@ -68,7 +68,7 @@ class GenomeCompiler:
         """
         genome_id = f"genome_{uuid.uuid4().hex[:12]}"
         
-        # Build genes from context
+        # Build genes from context (including GA4 data)
         genes = self._build_genes(context, pattern_gene_map or {})
         
         # Determine section order
@@ -82,7 +82,7 @@ class GenomeCompiler:
             c.get("claim", str(c)) for c in context.unsupported_claims
         ]
         
-        # Build tracking config
+        # Build tracking config (including GA4)
         tracking_config = self._build_tracking_config(context)
         
         # Build click-to-call config
@@ -139,14 +139,16 @@ class GenomeCompiler:
         """Build genome genes from context."""
         genes = []
         
-        # Hero gene
+        # Hero gene with GA4 keyword insights
         hero_gene = {
             "gene_id": f"hero_{uuid.uuid4().hex[:6]}",
             "gene_type": "content",
             "section": "hero",
             "name": "Hero Headline & Subheadline",
             "configuration": {
-                "pattern": pattern_gene_map.get("hero", {}).get("pattern", "command_verb")
+                "pattern": pattern_gene_map.get("hero", {}).get("pattern", "command_verb"),
+                "keywords": context.top_converting_keywords[:3] if context.top_converting_keywords else [],
+                "ga4_optimized": bool(context.ga4_report_id),
             },
             "content": {
                 "headline": context.offer_headline,
@@ -155,15 +157,23 @@ class GenomeCompiler:
         }
         genes.append(hero_gene)
         
-        # CTA gene
+        # CTA gene with GA4 targets
+        cta_config = {
+            "action_type": context.conversion_goal.value if hasattr(context.conversion_goal, 'value') else str(context.conversion_goal),
+            "target_click_rate": context.target_cta_click_rate,
+        }
+        
+        # Add mobile optimization flag if needed
+        if context.mobile_friendly_score < 0.8:
+            cta_config["mobile_optimized"] = True
+            cta_config["large_touch_target"] = True
+        
         cta_gene = {
             "gene_id": f"cta_{uuid.uuid4().hex[:6]}",
             "gene_type": "cta",
             "section": "cta",
             "name": "Primary CTA",
-            "configuration": {
-                "action_type": context.conversion_goal.value if hasattr(context.conversion_goal, 'value') else str(context.conversion_goal)
-            },
+            "configuration": cta_config,
             "content": {
                 "cta_text": self._get_cta_text(context),
                 "phone_number": context.click_to_call_number
@@ -183,6 +193,40 @@ class GenomeCompiler:
                 }
             }
             genes.append(trust_gene)
+        
+        # Geo-focused gene if GA4 shows best state
+        if context.best_performing_state and context.ga4_report_id:
+            geo_gene = {
+                "gene_id": f"geo_{uuid.uuid4().hex[:6]}",
+                "gene_type": "content",
+                "section": "geo_targeting",
+                "name": "Geo-Focused Content",
+                "configuration": {
+                    "primary_state": context.best_performing_state,
+                    "geo_optimized": True,
+                },
+                "content": {
+                    "geo_highlight": f"Serving {context.best_performing_state} customers"
+                }
+            }
+            genes.append(geo_gene)
+        
+        # Urgency gene if trend is improving
+        if context.conversion_trend == "improving":
+            urgency_gene = {
+                "gene_id": f"urgency_{uuid.uuid4().hex[:6]}",
+                "gene_type": "content",
+                "section": "urgency",
+                "name": "Social Proof / Urgency",
+                "configuration": {
+                    "show_trend": True,
+                    "trend_pct": context.conversion_trend_pct,
+                },
+                "content": {
+                    "urgency_message": f"Growing demand - book now to secure your spot"
+                }
+            }
+            genes.append(urgency_gene)
         
         return genes
     
@@ -211,6 +255,24 @@ class GenomeCompiler:
         
         if context.experiment_id:
             config["experiment_id"] = context.experiment_id
+        
+        # GA4 integration
+        if context.ga4_property_id:
+            config["ga4"] = {
+                "property_id": context.ga4_property_id,
+                "report_id": context.ga4_report_id,
+                "conversion_tracking": {
+                    "target_cvr": context.target_cvr,
+                    "target_bounce_rate": context.target_bounce_rate,
+                },
+                "events": [
+                    "page_view",
+                    "engagement",
+                    "cta_click",
+                    "phone_call",
+                    "form_submit"
+                ]
+            }
         
         return config
     

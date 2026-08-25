@@ -1,15 +1,8 @@
 {
-  "id": "conversion-architect-plugin",
+  "id": "cxarch",
   "name": "Conversion Architect",
   "modes": [
-    "canvas",
-    "development"
+    "canvas"
   ],
-  "icon": "/icon.svg",
-  "permissions": [
-    "read",
-    "write",
-    "network"
-  ],
-  "entrypoint": "index.html"
+  "icon": "/icon.svg"
 }

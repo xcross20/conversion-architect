@@ -1,0 +1,1 @@
+web: python -m uvicorn conversion_architect.api.main:app --host 0.0.0.0 --port $PORT
