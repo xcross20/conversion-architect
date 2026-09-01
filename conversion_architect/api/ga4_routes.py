@@ -7,6 +7,7 @@ GA4 data without needing direct access to the MCP stdio server.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -17,6 +18,10 @@ from conversion_architect.schemas import (
     GA4AnalyticsData,
     GA4ConversionInsights,
 )
+
+# Every GA4 endpoint falls back to mock data after this many seconds,
+# regardless of what MCP is doing. Bounds user-visible latency.
+ENDPOINT_TIMEOUT_SECONDS = 15.0
 
 logger = logging.getLogger(__name__)
 
@@ -80,12 +85,21 @@ async def get_ga4_analytics(
         GA4AnalyticsData as JSON
     """
     try:
-        data = await service.get_analytics(
-            property_id=property_id,
-            days=days,
-            use_cache=use_cache,
+        data = await asyncio.wait_for(
+            service.get_analytics(
+                property_id=property_id,
+                days=days,
+                use_cache=use_cache,
+            ),
+            timeout=ENDPOINT_TIMEOUT_SECONDS,
         )
         return data.model_dump(mode="json")
+    except asyncio.TimeoutError:
+        logger.warning(f"analytics endpoint timed out after {ENDPOINT_TIMEOUT_SECONDS}s")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail=f"GA4 upstream timed out after {ENDPOINT_TIMEOUT_SECONDS}s",
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
