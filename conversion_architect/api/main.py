@@ -7,7 +7,10 @@ GA4 analytics, conversion insights, and genome compilation services.
 from __future__ import annotations
 
 import logging
+import os
+import tempfile
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +19,32 @@ from fastapi.responses import JSONResponse
 from conversion_architect.api.config import get_settings
 from conversion_architect.api.ga4_routes import router as ga4_router
 from conversion_architect.api.services import GA4Service
+
+
+def _materialize_credentials() -> str | None:
+    """Resolve GCP credentials from env into a file path ADC can use.
+
+    Railway (and other PaaS) only let you set env vars, not mount files.
+    We accept the JSON content in `GOOGLE_APPLICATION_CREDENTIALS_JSON`,
+    write it to a temp file, and set `GOOGLE_APPLICATION_CREDENTIALS`
+    so both our code and the analytics-mcp subprocess can find it.
+
+    Returns the file path, or None if no credentials were provided.
+    """
+    json_content = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if not json_content:
+        return None
+
+    # If GOOGLE_APPLICATION_CREDENTIALS already points to a real file, use it.
+    existing = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if existing and Path(existing).is_file():
+        return existing
+
+    creds_path = Path(tempfile.gettempdir()) / "gcp-credentials.json"
+    creds_path.write_text(json_content)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(creds_path)
+    logger.info(f"Materialized GCP credentials from env to {creds_path}")
+    return str(creds_path)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,17 +61,20 @@ async def lifespan(app: FastAPI):
     logger.info(
         f"app.starting name={settings.app_name} env={settings.app_env} ga4={settings.ga4.enabled}"
     )
-    
+
+    # Materialize GCP credentials from env content into a file ADC can read.
+    creds_path = _materialize_credentials()
+
     # Initialize GA4 service
     app.state.ga4_service = GA4Service(
         property_id=settings.ga4.property_id,
-        credentials_path=settings.ga4.credentials_path,
+        credentials_path=creds_path or settings.ga4.credentials_path,
         project_id=settings.ga4.project_id,
         mcp_command=settings.ga4.mcp_command,
         cache_ttl=settings.ga4.cache_ttl_seconds,
     )
     await app.state.ga4_service.startup()
-    
+
     logger.info("app.started")
     
     yield
