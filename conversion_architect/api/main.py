@@ -8,9 +8,12 @@ from __future__ import annotations
 
 import logging
 import os
+import sys
 import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
+
+print(f"[BOOT] pid={os.getpid()} port={os.environ.get('PORT', 'unset')} python={sys.version.split()[0]}", flush=True)
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
