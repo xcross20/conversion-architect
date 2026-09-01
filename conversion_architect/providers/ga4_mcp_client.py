@@ -99,13 +99,15 @@ class GA4MCPClient:
     
     async def connect(self) -> bool:
         """Connect to GA4 MCP server.
-        
+
         Returns:
             True if connection successful
-            
+
         Raises:
-            GA4MCPClientError if connection fails
+            GA4MCPClientError if connection fails (or times out)
         """
+        import asyncio
+
         try:
             from mcp import ClientSession, StdioServerParameters
             from mcp.client.stdio import stdio_client
@@ -113,41 +115,47 @@ class GA4MCPClient:
             raise GA4MCPClientError(
                 "mcp package not installed. Run: pip install mcp"
             )
-        
+
         if not self._credentials_path:
             logger.warning(
                 "GOOGLE_APPLICATION_CREDENTIALS not set. "
                 "GA4 API calls will fail without valid credentials."
             )
-        
+
         env = os.environ.copy()
         if self._credentials_path:
             env["GOOGLE_APPLICATION_CREDENTIALS"] = self._credentials_path
         if self._project_id:
             env["GOOGLE_PROJECT_ID"] = self._project_id
-        
+
         try:
             params = StdioServerParameters(
                 command=self._mcp_command,
                 args=[],
                 env=env,
             )
-            
-            # Note: in MCP Python SDK 2.x, stdio_client returns
-            # (read_stream, write_stream) and session is created separately
+
             self._stdio_context = stdio_client(params)
             self._read_stream, self._write_stream = await self._stdio_context.__aenter__()
-            
+
             self._session = ClientSession(self._read_stream, self._write_stream)
             await self._session.__aenter__()
-            
-            # Initialize MCP session
-            await self._session.initialize()
-            
+
+            # Bound the MCP initialize handshake. Without this, an
+            # auth-failing subprocess hangs the whole FastAPI startup
+            # and /health never responds.
+            await asyncio.wait_for(self._session.initialize(), timeout=15.0)
+
             self._connected = True
             logger.info(f"Connected to GA4 MCP server: {self._mcp_command}")
             return True
-            
+
+        except asyncio.TimeoutError:
+            logger.warning(
+                "GA4 MCP initialize timed out after 15s. "
+                "Continuing without MCP; adapter will return mock data."
+            )
+            raise GA4MCPClientError("MCP initialize timed out")
         except Exception as e:
             logger.error(f"Failed to connect to GA4 MCP: {e}")
             raise GA4MCPClientError(f"Connection failed: {e}")
