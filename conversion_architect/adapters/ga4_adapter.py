@@ -6,6 +6,7 @@ Fetches conversion data, keyword performance, and audience insights.
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from datetime import date, datetime, timedelta
@@ -66,6 +67,7 @@ class GA4Adapter:
         self._property_id = property_id
         self._cache: dict[str, GA4AnalyticsData] = {}
         self._cache_ttl_seconds = 3600  # 1 hour
+        self._request_timeout_seconds = 15.0  # fail fast, fall back to mock
     
     async def fetch_analytics(
         self,
@@ -144,19 +146,29 @@ class GA4Adapter:
             
             # Call run_report on MCP client
             logger.info(f"Fetching GA4 data via MCP for {property_id}")
-            
+
             start_str = start_date.isoformat()
             end_str = end_date.isoformat()
-            
-            response = await self._mcp_client.run_report(
-                property_id=property_id,
-                start_date=start_str,
-                end_date=end_str,
-                dimensions=dims,
-                metrics=mets,
-                limit=10000,
-            )
-            
+
+            try:
+                response = await asyncio.wait_for(
+                    self._mcp_client.run_report(
+                        property_id=property_id,
+                        start_date=start_str,
+                        end_date=end_str,
+                        dimensions=dims,
+                        metrics=mets,
+                        limit=10000,
+                    ),
+                    timeout=self._request_timeout_seconds,
+                )
+            except asyncio.TimeoutError:
+                logger.warning(
+                    f"GA4 MCP call timed out after {self._request_timeout_seconds}s, "
+                    f"falling back to mock data for {property_id}"
+                )
+                return self._generate_mock_data(property_id, start_date, end_date)
+
             # Parse MCP response into GA4AnalyticsData
             return self._parse_mcp_response(response, property_id, start_date, end_date)
             
