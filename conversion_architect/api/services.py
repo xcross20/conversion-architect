@@ -80,37 +80,35 @@ class GA4Service:
         self._accounts_cache: tuple[list[dict[str, Any]], float] | None = None
     
     async def startup(self) -> None:
-        """Start the GA4 service."""
+        """Start the GA4 service.
+
+        Builds the MCP client and adapter but does NOT connect to MCP.
+        Connection is deferred to the first analytics request (lazy init),
+        so the lifespan completes in milliseconds and /health responds
+        immediately — keeping deploys green regardless of MCP state.
+        """
         try:
-            # Build MCP client
-            client_kwargs = {}
+            client_kwargs: dict[str, Any] = {}
             if self._credentials_path:
                 client_kwargs["credentials_path"] = self._credentials_path
             if self._project_id:
                 client_kwargs["project_id"] = self._project_id
             if self._mcp_command:
                 client_kwargs["mcp_command"] = self._mcp_command
-            
+
             self._mcp_client = GA4MCPClient(**client_kwargs)
-            
-            # Try to connect (may fail if no credentials)
-            try:
-                await self._mcp_client.connect()
-                logger.info("GA4 MCP client connected")
-            except GA4MCPClientError as e:
-                logger.warning(f"GA4 MCP connection failed: {e}. Using mock fallback.")
-            
-            # Build adapter
+            logger.info("GA4 MCP client built (lazy connect on first request)")
+
             self._adapter = GA4Adapter(
                 mcp_client=self._mcp_client,
                 property_id=self._default_property_id or "properties/demo",
             )
-            
         except Exception as e:
             logger.error(f"GA4 service startup failed: {e}")
-            # Don't crash the app; degrade gracefully
             self._mcp_client = None
-            self._adapter = GA4Adapter(property_id=self._default_property_id or "properties/demo")
+            self._adapter = GA4Adapter(
+                property_id=self._default_property_id or "properties/demo",
+            )
     
     async def shutdown(self) -> None:
         """Shut down the GA4 service."""
