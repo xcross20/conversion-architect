@@ -135,16 +135,17 @@ class GA4MCPClient:
                 env=env,
             )
 
-            self._stdio_context = stdio_client(params)
-            self._read_stream, self._write_stream = await self._stdio_context.__aenter__()
+            async def _do_connect() -> None:
+                self._stdio_context = stdio_client(params)
+                self._read_stream, self._write_stream = await self._stdio_context.__aenter__()
+                self._session = ClientSession(self._read_stream, self._write_stream)
+                await self._session.__aenter__()
+                await self._session.initialize()
 
-            self._session = ClientSession(self._read_stream, self._write_stream)
-            await self._session.__aenter__()
-
-            # Bound the MCP initialize handshake. Without this, an
-            # auth-failing subprocess hangs the whole FastAPI startup
-            # and /health never responds.
-            await asyncio.wait_for(self._session.initialize(), timeout=15.0)
+            # Bound the entire MCP handshake. Without this, an auth-failing
+            # subprocess hangs the whole FastAPI startup and /health never
+            # responds, which Railway marks as a failed deploy.
+            await asyncio.wait_for(_do_connect(), timeout=15.0)
 
             self._connected = True
             logger.info(f"Connected to GA4 MCP server: {self._mcp_command}")
@@ -152,10 +153,10 @@ class GA4MCPClient:
 
         except asyncio.TimeoutError:
             logger.warning(
-                "GA4 MCP initialize timed out after 15s. "
+                "GA4 MCP connect timed out after 15s. "
                 "Continuing without MCP; adapter will return mock data."
             )
-            raise GA4MCPClientError("MCP initialize timed out")
+            raise GA4MCPClientError("MCP connect timed out")
         except Exception as e:
             logger.error(f"Failed to connect to GA4 MCP: {e}")
             raise GA4MCPClientError(f"Connection failed: {e}")
