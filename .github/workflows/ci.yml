@@ -48,4 +48,4 @@ jobs:
       - name: Deploy
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-        run: railway up --ci
+        run: railway up --ci --project e757e113-6958-4802-9116-1a9db71d060f --service ca-api
