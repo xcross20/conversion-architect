@@ -57,31 +57,46 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan handler."""
+    """Application lifespan handler.
+
+    Every step is wrapped so a failure anywhere still yields to uvicorn,
+    letting /health respond immediately and Railway declare the deploy
+    healthy. Defer all slow work (MCP handshake, GA4 calls) to the first
+    request.
+    """
     logger.info(
         f"app.starting name={settings.app_name} env={settings.app_env} ga4={settings.ga4.enabled}"
     )
 
-    # Materialize GCP credentials from env content into a file ADC can read.
-    creds_path = _materialize_credentials()
+    try:
+        creds_path = _materialize_credentials()
+    except Exception as e:
+        logger.error(f"credential materialization failed: {e}")
+        creds_path = None
 
-    # Initialize GA4 service
-    app.state.ga4_service = GA4Service(
-        property_id=settings.ga4.property_id,
-        credentials_path=creds_path or settings.ga4.credentials_path,
-        project_id=settings.ga4.project_id,
-        mcp_command=settings.ga4.mcp_command,
-        cache_ttl=settings.ga4.cache_ttl_seconds,
-    )
-    await app.state.ga4_service.startup()
+    try:
+        app.state.ga4_service = GA4Service(
+            property_id=settings.ga4.property_id,
+            credentials_path=creds_path or settings.ga4.credentials_path,
+            project_id=settings.ga4.project_id,
+            mcp_command=settings.ga4.mcp_command,
+            cache_ttl=settings.ga4.cache_ttl_seconds,
+        )
+        await app.state.ga4_service.startup()
+    except Exception as e:
+        logger.error(f"GA4 service init failed: {e}")
+        app.state.ga4_service = None
 
     logger.info("app.started")
-    
+
     yield
-    
-    # Shutdown
+
     logger.info("app.shutdown")
-    await app.state.ga4_service.shutdown()
+    try:
+        if app.state.ga4_service:
+            await app.state.ga4_service.shutdown()
+    except Exception as e:
+        logger.warning(f"shutdown error: {e}")
 
 
 def create_app() -> FastAPI:
