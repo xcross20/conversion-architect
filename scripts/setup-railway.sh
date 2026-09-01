@@ -18,20 +18,21 @@
 #   - Configure DNS at the registrar.
 #   - Deploy (CI does that on push to main).
 
-set -euo pipefail
+set -eo pipefail
 
 # ---- config (override via env or CLI flags) ----------------------------------
 
 PROJECT_NAME="${RAILWAY_PROJECT_NAME:-conversion-architect-api}"
-API_SERVICE="${API_SERVICE:-conversion-architect-api}"
+API_SERVICE="${API_SERVICE:-ca-api}"
 API_HEALTHCHECK_PATH="${API_HEALTHCHECK_PATH:-/health}"
 
 # Non-secret env vars applied to the API service every run.
-declare -A NON_SECRET_VARS=(
-  [GA4_MOCK]="false"
-  [CORS_ORIGINS]="http://localhost:3000,https://ca-api-production-7266.up.railway.app"
-  [RATE_LIMIT_PER_MINUTE]="60"
-  [LOG_LEVEL]="INFO"
+# Format: "KEY=VALUE" pairs, one per line.
+NON_SECRET_VARS=(
+  "GA4_MOCK=false"
+  "CORS_ORIGINS=http://localhost:3000,https://ca-api-production-7266.up.railway.app"
+  "RATE_LIMIT_PER_MINUTE=60"
+  "LOG_LEVEL=INFO"
 )
 
 # ---- preflight ---------------------------------------------------------------
@@ -61,20 +62,21 @@ fi
 
 echo "==> Ensuring Redis service exists"
 REDIS_EXISTS=$(railway status --json 2>/dev/null \
-  | jq -r '.services[]? | select(.name | test("redis"; "i")) | .name' \
+  | jq -r '.services.edges[]?.node | select(.name | test("redis"; "i")) | .name' \
   | head -n1 || true)
 
 if [[ -n "${REDIS_EXISTS:-}" ]]; then
   echo "    Redis already provisioned: $REDIS_EXISTS"
 else
-  railway add --plugin redis
+  printf "Database\n" | railway add -d redis --json >/dev/null 2>&1 || railway add -d redis --json >/dev/null
+  echo "    Redis added"
 fi
 
 # ---- 3. set non-secret env vars ---------------------------------------------
 
 echo "==> Setting non-secret env vars on API service"
-for key in "${!NON_SECRET_VARS[@]}"; do
-  railway variables set --service "$API_SERVICE" "$key=${NON_SECRET_VARS[$key]}"
+for pair in "${NON_SECRET_VARS[@]}"; do
+  railway variables set --service "$API_SERVICE" "$pair"
 done
 
 # ---- 4. set secrets ---------------------------------------------------------
