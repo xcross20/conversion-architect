@@ -5,7 +5,7 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "python -m http.server $PORT --bind 0.0.0.0 --directory /tmp"
+startCommand = "python scripts/railway_diag_server.py"
 healthcheckPath = "/health"
 healthcheckTimeout = 100
 restartPolicyType = "ON_FAILURE"
